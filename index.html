@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Write NFC Tag - MyRingBusinessCard</title>
+<style>
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  text-align: center;
+  padding: 2em;
+  background-color: #f9f9f9;
+  color: #333;
+}
+
+#writeButton {
+  display: inline-block;
+  padding: 1.2em 2.5em;
+  font-size: 1.5em;
+  font-weight: bold;
+  border: none;
+  border-radius: 14px;
+  background-color: #007bff;
+  color: white;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  margin-top: 1em;
+  margin-bottom: 2em;
+  width: 90%;
+  max-width: 400px;
+}
+
+#writeButton:disabled {
+  background-color: #cccccc;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+#writeButton:hover:enabled {
+  background-color: #0056b3;
+  transform: scale(1.05);
+}
+
+#output {
+  margin-top: 1em;
+  text-align: left;
+  background-color: #fff;
+  padding: 1em;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  max-width: 90%;
+  margin-left: auto;
+  margin-right: auto;
+  white-space: pre-wrap;
+  font-size: 1.1em;
+  line-height: 1.4em;
+}
+</style>
+</head>
+
+<body>
+
+<h2>Write NFC Tag - MyRingBusinessCard</h2>
+<button id="writeButton" disabled>Write URL to NFC Tag</button>
+<pre id="output">Waiting for NFC tag...</pre>
+
+<script>
+const output = document.getElementById('output');
+const writeButton = document.getElementById('writeButton');
+
+let ndef; // shared reader
+let tagIsPresent = false;
+let tagTimeout;
+
+async function startNFCScan() {
+  try {
+    ndef = new NDEFReader();
+
+    output.textContent = "Waiting for NFC tag...";
+    await ndef.scan();
+
+    console.log("✅ NFC scan started");
+
+    ndef.onreading = event => {
+      const { serialNumber, message } = event;
+
+      clearTimeout(tagTimeout); // reset timeout
+
+      tagIsPresent = true;
+      writeButton.disabled = false; // Enable Write button
+
+      output.textContent = `✅ Tag detected!\nSerial Number: ${serialNumber}\n`;
+
+      for (const record of message.records) {
+        output.textContent += `\n--- Record ---\n`;
+        output.textContent += `Record Type: ${record.recordType}\n`;
+        output.textContent += `Media Type: ${record.mediaType || 'N/A'}\n`;
+
+        const textDecoder = new TextDecoder();
+        const raw = textDecoder.decode(record.data);
+        output.textContent += `Data: ${raw}\n`;
+      }
+
+      // Auto-disable Write after 10 sec if no new tag detected
+      tagTimeout = setTimeout(() => {
+        tagIsPresent = false;
+        writeButton.disabled = true;
+        output.textContent = "Waiting for NFC tag...";
+      }, 10000);
+    };
+
+    ndef.onreadingerror = () => {
+      console.log("❌ NFC reading error.");
+      output.textContent = 'Error reading NFC tag!';
+      tagIsPresent = false;
+      writeButton.disabled = true;
+    };
+
+  } catch (error) {
+    console.error("❌ NFC scan failed:", error);
+    output.textContent = "Failed to start NFC scan: " + error;
+    tagIsPresent = false;
+    writeButton.disabled = true;
+  }
+}
+
+writeButton.addEventListener('click', async () => {
+  if (!tagIsPresent) {
+    alert("No NFC tag detected. Please bring a tag near.");
+    return;
+  }
+
+  try {
+    const url = `https://www.MyRingBusinessCard.com/profile/${crypto.randomUUID()}`;
+
+    await ndef.write({
+      records: [
+        {
+          recordType: "url",
+          data: url
+        }
+      ]
+    });
+
+    console.log(`✅ URL written to the tag - ${url}`);
+    output.textContent += `\n✅ URL written to tag:\n${url}\n`;
+
+  } catch (error) {
+    console.error("❌ Failed to write to NFC tag:", error);
+    output.textContent += `\n❌ Failed to write to NFC tag: ${error}\n`;
+  }
+});
+
+// Start NFC scanning when page loads
+startNFCScan();
+</script>
+
+</body>
+</html>
