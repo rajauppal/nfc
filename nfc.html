@@ -1,0 +1,14 @@
+<button id="writeButton">Write to NFC Tag</button>
+
+<script>
+document.getElementById('writeButton').addEventListener('click', async () => {
+  try {
+    const ndef = new NDEFReader();
+    await ndef.write("Hello from my webpage!");
+    alert("✅ NFC tag written successfully!");
+  } catch (error) {
+    console.error("❌ NFC write failed:", error);
+    alert("Failed to write to NFC tag: " + error);
+  }
+});
+</script>
