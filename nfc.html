@@ -1,28 +1,26 @@
-<button id="readButton">Read NFC Tag</button>
 <button id="writeButton" disabled>Write URL to NFC Tag</button>
-<pre id="output">Idle</pre>
+<pre id="output">Waiting for NFC tag...</pre>
 
 <script>
 const output = document.getElementById('output');
-const readButton = document.getElementById('readButton');
 const writeButton = document.getElementById('writeButton');
 
 let tagIsPresent = false;
 
-readButton.addEventListener('click', async () => {
+async function startNFCScan() {
   try {
     const ndef = new NDEFReader();
 
     output.textContent = "Waiting for NFC tag...";
     await ndef.scan();
 
-    console.log("✅ Scan started");
+    console.log("✅ NFC scan started");
 
     ndef.onreading = event => {
       const { serialNumber, message } = event;
 
       tagIsPresent = true;
-      writeButton.disabled = false; // Enable button
+      writeButton.disabled = false; // Enable Write button
 
       output.textContent = `✅ Tag detected!\nSerial Number: ${serialNumber}\n`;
 
@@ -50,11 +48,11 @@ readButton.addEventListener('click', async () => {
     tagIsPresent = false;
     writeButton.disabled = true;
   }
-});
+}
 
 writeButton.addEventListener('click', async () => {
   if (!tagIsPresent) {
-    alert("No NFC tag detected. Please scan a tag first.");
+    alert("No NFC tag detected. Please bring a tag near.");
     return;
   }
 
@@ -77,4 +75,7 @@ writeButton.addEventListener('click', async () => {
     output.textContent += `\n❌ Failed to write to NFC tag: ${error}\n`;
   }
 });
+
+// Start NFC scanning when page loads
+startNFCScan();
 </script>
