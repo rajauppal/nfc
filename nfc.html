@@ -1,20 +1,28 @@
 <button id="readButton">Read NFC Tag</button>
+<button id="writeButton" disabled>Write URL to NFC Tag</button>
 <pre id="output">Idle</pre>
 
 <script>
-document.getElementById('readButton').addEventListener('click', async () => {
-  const output = document.getElementById('output');
+const output = document.getElementById('output');
+const readButton = document.getElementById('readButton');
+const writeButton = document.getElementById('writeButton');
 
+let currentTag = null; // we store that a tag is nearby
+
+readButton.addEventListener('click', async () => {
   try {
     const ndef = new NDEFReader();
 
     output.textContent = "Waiting for NFC tag...";
-
     await ndef.scan();
-    console.log("✅ Scan started, hold tag to device...");
+
+    console.log("✅ Scan started");
 
     ndef.onreading = event => {
       const { serialNumber, message } = event;
+      currentTag = ndef; // save reference
+
+      writeButton.disabled = false; // enable Write button
       output.textContent = `✅ Tag detected!\nSerial Number: ${serialNumber}\n`;
 
       for (const record of message.records) {
@@ -22,30 +30,49 @@ document.getElementById('readButton').addEventListener('click', async () => {
         output.textContent += `Record Type: ${record.recordType}\n`;
         output.textContent += `Media Type: ${record.mediaType || 'N/A'}\n`;
 
-        if (record.recordType === "text") {
-          const textDecoder = new TextDecoder(record.encoding);
-          const text = textDecoder.decode(record.data);
-          output.textContent += `Text: ${text}\n`;
-        } else if (record.recordType === "url") {
-          const textDecoder = new TextDecoder();
-          const url = textDecoder.decode(record.data);
-          output.textContent += `URL: ${url}\n`;
-        } else {
-          const textDecoder = new TextDecoder();
-          const raw = textDecoder.decode(record.data);
-          output.textContent += `Data (raw): ${raw}\n`;
-        }
+        const textDecoder = new TextDecoder();
+        const raw = textDecoder.decode(record.data);
+        output.textContent += `Data: ${raw}\n`;
       }
     };
 
     ndef.onreadingerror = () => {
       console.log("❌ NFC reading error.");
       output.textContent = 'Error reading NFC tag!';
+      currentTag = null;
+      writeButton.disabled = true;
     };
 
   } catch (error) {
     console.error("❌ NFC scan failed:", error);
     output.textContent = "Failed to start NFC scan: " + error;
+    currentTag = null;
+    writeButton.disabled = true;
+  }
+});
+
+writeButton.addEventListener('click', async () => {
+  if (!currentTag) {
+    alert("No NFC tag detected. Please scan a tag first.");
+    return;
+  }
+
+  try {
+    const randomGUID = crypto.randomUUID();
+    const url = `https://www.myringbusinesscard.com/profile/${randomGUID}`;
+
+    await currentTag.write({
+      records: [
+        { recordType: "url", data: url }
+      ]
+    });
+
+    console.log("✅ URL written:", url);
+    output.textContent += `\n✅ URL written to tag:\n${url}\n`;
+
+  } catch (error) {
+    console.error("❌ Failed to write to NFC tag:", error);
+    output.textContent += `\n❌ Failed to write to NFC tag: ${error}\n`;
   }
 });
 </script>
