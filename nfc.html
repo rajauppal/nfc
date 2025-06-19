@@ -58,16 +58,17 @@ writeButton.addEventListener('click', async () => {
 
   try {
     const ndef = new NDEFReader();
+    var url = `https://www.myringbusinesscard.com/profile/${crypto.randomUUID()}`
     await ndef.write({
       records: [
         {
           recordType: "url",
-          data: `https://www.myringbusinesscard.com/profile/${crypto.randomUUID()}`
+          data: url
         }
       ]
     });
 
-    console.log("✅ URL written");
+    console.log(`✅ URL written to the tag - ${url}`);
     output.textContent += `\n✅ URL written to tag!\n`;
 
   } catch (error) {
