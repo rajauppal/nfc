@@ -7,7 +7,7 @@ const output = document.getElementById('output');
 const readButton = document.getElementById('readButton');
 const writeButton = document.getElementById('writeButton');
 
-let currentTag = null; // we store that a tag is nearby
+let tagIsPresent = false;
 
 readButton.addEventListener('click', async () => {
   try {
@@ -20,9 +20,10 @@ readButton.addEventListener('click', async () => {
 
     ndef.onreading = event => {
       const { serialNumber, message } = event;
-      currentTag = ndef; // save reference
 
-      writeButton.disabled = false; // enable Write button
+      tagIsPresent = true;
+      writeButton.disabled = false; // Enable button
+
       output.textContent = `✅ Tag detected!\nSerial Number: ${serialNumber}\n`;
 
       for (const record of message.records) {
@@ -39,36 +40,37 @@ readButton.addEventListener('click', async () => {
     ndef.onreadingerror = () => {
       console.log("❌ NFC reading error.");
       output.textContent = 'Error reading NFC tag!';
-      currentTag = null;
+      tagIsPresent = false;
       writeButton.disabled = true;
     };
 
   } catch (error) {
     console.error("❌ NFC scan failed:", error);
     output.textContent = "Failed to start NFC scan: " + error;
-    currentTag = null;
+    tagIsPresent = false;
     writeButton.disabled = true;
   }
 });
 
 writeButton.addEventListener('click', async () => {
-  if (!currentTag) {
+  if (!tagIsPresent) {
     alert("No NFC tag detected. Please scan a tag first.");
     return;
   }
 
   try {
-    const randomGUID = crypto.randomUUID();
-    const url = `https://www.myringbusinesscard.com/profile/${randomGUID}`;
-
-    await currentTag.write({
+    const ndef = new NDEFReader();
+    await ndef.write({
       records: [
-        { recordType: "url", data: url }
+        {
+          recordType: "url",
+          data: `https://www.myringbusinesscard.com/profile/${crypto.randomUUID()}`
+        }
       ]
     });
 
-    console.log("✅ URL written:", url);
-    output.textContent += `\n✅ URL written to tag:\n${url}\n`;
+    console.log("✅ URL written");
+    output.textContent += `\n✅ URL written to tag!\n`;
 
   } catch (error) {
     console.error("❌ Failed to write to NFC tag:", error);
