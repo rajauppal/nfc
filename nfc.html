@@ -1,14 +1,51 @@
-<button id="writeButton">Write to NFC Tag</button>
+<button id="readButton">Read NFC Tag</button>
+<pre id="output">Idle</pre>
 
 <script>
-document.getElementById('writeButton').addEventListener('click', async () => {
+document.getElementById('readButton').addEventListener('click', async () => {
+  const output = document.getElementById('output');
+
   try {
     const ndef = new NDEFReader();
-    await ndef.write("Hello from my webpage!");
-    alert("✅ NFC tag written successfully!");
+
+    output.textContent = "Waiting for NFC tag...";
+
+    await ndef.scan();
+    console.log("✅ Scan started, hold tag to device...");
+
+    ndef.onreading = event => {
+      const { serialNumber, message } = event;
+      output.textContent = `✅ Tag detected!\nSerial Number: ${serialNumber}\n`;
+
+      for (const record of message.records) {
+        output.textContent += `\n--- Record ---\n`;
+        output.textContent += `Record Type: ${record.recordType}\n`;
+        output.textContent += `Media Type: ${record.mediaType || 'N/A'}\n`;
+
+        if (record.recordType === "text") {
+          const textDecoder = new TextDecoder(record.encoding);
+          const text = textDecoder.decode(record.data);
+          output.textContent += `Text: ${text}\n`;
+        } else if (record.recordType === "url") {
+          const textDecoder = new TextDecoder();
+          const url = textDecoder.decode(record.data);
+          output.textContent += `URL: ${url}\n`;
+        } else {
+          const textDecoder = new TextDecoder();
+          const raw = textDecoder.decode(record.data);
+          output.textContent += `Data (raw): ${raw}\n`;
+        }
+      }
+    };
+
+    ndef.onreadingerror = () => {
+      console.log("❌ NFC reading error.");
+      output.textContent = 'Error reading NFC tag!';
+    };
+
   } catch (error) {
-    console.error("❌ NFC write failed:", error);
-    alert("Failed to write to NFC tag: " + error);
+    console.error("❌ NFC scan failed:", error);
+    output.textContent = "Failed to start NFC scan: " + error;
   }
 });
 </script>
